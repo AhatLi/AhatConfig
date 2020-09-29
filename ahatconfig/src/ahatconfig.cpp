@@ -15,21 +15,19 @@ bool AhatConfig::readConfig(char* path)
 		int len = GetModuleFileName(NULL, tmp, MAX_PATH);
 		std::wstring ws(tmp);
 		std::string buf(ws.begin(), ws.end());
-		buf = buf.substr(0, buf.find_last_of("\\"));
+		buf = buf.substr(0, buf.find_last_of("."));
 #elif __linux__
 		char buf[256];
 		int len = readlink("/proc/self/exe", buf, 256);
 		buf[len] = '\0';
-
-		configPath += buf;
-		configPath += ".cfg";
 #endif
+		configPath += buf;
 	}
 	else
 	{
 		configPath += path;
-		configPath += ".cfg";
 	}
+	configPath += ".cfg";
 
 	std::string data = "";
 	int num = 0;
@@ -37,6 +35,12 @@ bool AhatConfig::readConfig(char* path)
 
 #ifdef _WIN32
 	std::ifstream inFile(configPath.c_str());
+
+	if (inFile.fail())
+	{
+		std::cout << "logWrite Fail!" << configPath.c_str() << "\n";
+		return false;
+	}
 
 	while (!inFile.eof()) 
 	{
