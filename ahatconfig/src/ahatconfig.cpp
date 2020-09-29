@@ -1,6 +1,5 @@
 #include "ahatconfig.h"
 
-
 bool AhatConfig::readConfig(std::string path)
 {
 	return readConfig(path.c_str());
@@ -11,12 +10,20 @@ bool AhatConfig::readConfig(char* path)
 	std::string configPath = "";
 	if(path == NULL)
 	{
+#ifdef _WIN32
+		wchar_t tmp[256];
+		int len = GetModuleFileName(NULL, tmp, MAX_PATH);
+		std::wstring ws(tmp);
+		std::string buf(ws.begin(), ws.end());
+		buf = buf.substr(0, buf.find_last_of("\\"));
+#elif __linux__
 		char buf[256];
 		int len = readlink("/proc/self/exe", buf, 256);
 		buf[len] = '\0';
-					
+
 		configPath += buf;
 		configPath += ".cfg";
+#endif
 	}
 	else
 	{
@@ -27,18 +34,30 @@ bool AhatConfig::readConfig(char* path)
 	std::string data = "";
 	int num = 0;
 	char buf[129];
-	int fd = open(configPath.c_str(), O_RDONLY);
-	if(fd == -1)
+
+#ifdef _WIN32
+	std::ifstream inFile(configPath.c_str());
+
+	while (!inFile.eof()) 
 	{
-		std::cout<<configPath.c_str()<<" file not found!\n";
+		inFile.getline(buf, 128);
+		data += buf;
+	}
+	inFile.close();
+#elif __linux__
+	int fd = open(configPath.c_str(), O_RDONLY);
+	if (fd == -1)
+	{
+		std::cout << configPath.c_str() << " file not found!\n";
 		return false;
 	}
-	while((num = read(fd, buf, 128)) > 0) 
+	while ((num = read(fd, buf, 128)) > 0)
 	{
-		buf[num] = '\0';
+		buf[num + 1] = '\0';
 		data += buf;
 	}
 	close(fd);
+#endif
 
 	std::istringstream ss(data);
 	std::string line;
