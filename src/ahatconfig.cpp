@@ -1,44 +1,93 @@
 #include "ahatconfig.h"
-
-
+/*
 bool AhatConfig::readConfig(std::string path)
 {
 	return readConfig(path.c_str());
 }
-
-bool AhatConfig::readConfig(char* path)
+*/
+bool AhatConfig::readConfig(const char* path)
 {
 	std::string configPath = "";
 	if(path == NULL)
 	{
+#ifdef _WIN32
+		/*
+		LPSTR tmp;
+		int len = GetModuleFileName(NULL, tmp, MAX_PATH);
+	//	std::wstring ws(tmp);
+		std::string buf = tmp;
+		buf = buf.substr(0, buf.find_last_of("."));
+		*/
+		std::string buf = "./";
+#elif __linux__
 		char buf[256];
 		int len = readlink("/proc/self/exe", buf, 256);
 		buf[len] = '\0';
-					
+#endif
 		configPath += buf;
-		configPath += ".cfg";
 	}
 	else
 	{
 		configPath += path;
-		configPath += ".cfg";
 	}
+	configPath += ".cfg";
 
 	std::string data = "";
 	int num = 0;
-	char buf[129];
-	int fd = open(configPath.c_str(), O_RDONLY);
-	if(fd == -1)
+	char buf[1024+1];
+
+//#ifdef _WIN32
+	std::ifstream inFile(configPath.c_str());
+
+	if (inFile.fail())
 	{
-		std::cout<<configPath.c_str()<<" file not found!\n";
+		std::cout << "Read Config Fail !! " << configPath.c_str() << "\n";
 		return false;
 	}
-	while((num = read(fd, buf, 128)) > 0) 
+
+	while (!inFile.eof()) 
 	{
-		buf[num] = '\0';
+		inFile.getline(buf, 1024);
+		data += buf;
+		data += "\n";
+		
+		std::string line = buf;
+
+		if (line.find("//") != std::string::npos)
+		{
+			line = line.substr(0, line.find("//"));
+		}
+		if (line.find("#") != std::string::npos)
+		{
+			line = line.substr(0, line.find("#"));
+		}
+		if (line.find("=") != std::string::npos)
+		{
+			std::istringstream sss(line);
+			std::string name = "";
+			std::string value = "";
+
+			std::getline(sss, name, '=');
+			std::getline(sss, value, '=');
+			configmap[trim(name)] = trim(value);
+		}
+	}
+	inFile.close();
+	/*
+#elif __linux__
+	int fd = open(configPath.c_str(), O_RDONLY);
+	if (fd == -1)
+	{
+		std::cout << configPath.c_str() << " file not found!\n";
+		return false;
+	}
+	while ((num = read(fd, buf, 128)) > 0)
+	{
+		buf[num + 1] = '\0';
 		data += buf;
 	}
 	close(fd);
+#endif
 
 	std::istringstream ss(data);
 	std::string line;
@@ -64,7 +113,7 @@ bool AhatConfig::readConfig(char* path)
 			configmap[trim(name)] = trim(value);
 		}
 	}
-
+	*/
 	return true;
 }
 
@@ -96,6 +145,20 @@ std::string AhatConfig::getConfig(std::string name)
 std::string AhatConfig::getConfig(const char* name)
 {
 	return getConfig(std::string(name));
+}
+
+int AhatConfig::getConfigInt(std::string name)
+{
+	if (configmap[name] == std::string())
+	{
+		return 0;
+	}
+	return atoi(configmap[name].c_str());
+}
+
+int AhatConfig::getConfigInt(const char* name)
+{
+	return getConfigInt(std::string(name));
 }
 
 bool AhatConfig::setConfig(std::string name, std::string value)
